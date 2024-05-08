@@ -1,0 +1,164 @@
+<!-- HTML Adjustment -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Foods</title>
+    <style>body {
+            font-family: Arial, sans-serif;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #menuList {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">User</a>
+    <a href="/menu">Menu</a>
+    <a href="order.html">Order</a>
+</nav>
+<h1>Menu Foods</h1>
+
+<!-- Button with dropdown form for creating new food -->
+<div>
+    <button onclick="toggleForm()">Create New Food</button>
+    <div id="foodForm" style="display: none;">
+        <form id="createFoodForm">
+            <label for="foodName">Name:</label>
+            <input type="text" id="foodName" name="foodName" required><br>
+
+            <label for="foodPrice">Price:</label>
+            <input type="number" id="foodPrice" name="foodPrice" required><br>
+
+            <label for="foodImage">Food Image:</label>
+            <input type="text" id="foodImage" name="foodImage" required><br>
+
+            <!-- Hidden input field to store the menu ID -->
+            <input type="hidden" id="menuId" name="menuId" value="">
+
+            <button type="submit">Create Food</button>
+        </form>
+    </div>
+</div>
+
+<!-- Display menu foods -->
+<div id="menuFoods"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Extract menu ID from the current URL path
+        const menuId = window.location.pathname.split('/').pop();
+        // Set the menu ID in the hidden input field
+        document.getElementById('menuId').value = menuId;
+        fetchMenuFoods(menuId);
+    });
+
+    // Function to fetch and display foods of a specific menu
+    function fetchMenuFoods(menuId) {
+        fetch(`http://localhost:8000/menus/${menuId}/foods`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch menu foods');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const menuFoods = document.getElementById('menuFoods');
+                menuFoods.innerHTML = '';
+                data.forEach(food => {
+                    const foodItem = document.createElement('div');
+                    foodItem.innerHTML = `
+                <strong>Name:</strong> ${food.name}<br>
+                <strong>Price:</strong> ${food.price}<br>
+                <strong>Food Image:</strong> <img src="${food.food_image}" alt="Food Image"><br>
+                <strong>Created At:</strong> ${food.created_at}<br>
+                <strong>Updated At:</strong> ${food.updated_at}<br><br>
+            `;
+                    menuFoods.appendChild(foodItem);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Function to toggle display of the food form
+    function toggleForm() {
+        const form = document.getElementById('foodForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Event listener for form submission to create a new food
+    document.getElementById('createFoodForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        const menuId = formData.get('menuId');
+        const foodData = {
+            name: formData.get('foodName'),
+            price: parseFloat(formData.get('foodPrice')),
+            food_image: formData.get('foodImage'),
+            menu_id: menuId
+        };
+        createFood(foodData);
+    });
+
+    // Function to create a new food
+    function createFood(foodData) {
+        fetch('http://localhost:8000/foods', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(foodData)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create food');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);
+                fetchMenuFoods(data.menu_id); // Refresh the food list after creating a new food
+                toggleForm(); // Hide the form after successful submission
+            })
+            .catch(error => console.error(error));
+    }
+</script>
+</body>
+</html>
